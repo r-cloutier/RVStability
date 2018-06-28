@@ -1,6 +1,6 @@
 import numpy as np
 import pylab as plt
-from integrateK2_18 import *
+from integrate_system import *
 import rebound
 import glob
 from scipy.ndimage import gaussian_filter

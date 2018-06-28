@@ -1,4 +1,4 @@
-from integrateK2_18 import *
+from integrate_system import *
 from scipy.ndimage import gaussian_filter
 import matplotlib.gridspec as gridspec
 from matplotlib.colors import rgb2hex
