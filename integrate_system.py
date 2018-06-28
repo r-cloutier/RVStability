@@ -5,20 +5,38 @@ import rvs, sys, glob, os
 from setupK2_18sim import setupK2_18simv2
 import cPickle as pickle
 
+#global incb, Rs, Ms
+#incb, Rs, Ms = 89.5785, .411, .359
 
-global incb, Rs, Ms
-incb, Rs, Ms = 89.5785, .411, .359
 
-class K2_18integration:
+#class K2_18integration
+class system_integration:
 
-    def __init__(self, folder, index, index2, Nyrs=1e6, Nout=500):
-
+    def __init__(self, folder, index, index2, Ms, eMs, Rs, bjd0, smac, incs, eincs, Nyrs=1e6, Nout=500):
+        '''
+        folder = top level directory name to save simulation results
+        index = job index 1 for output filename
+        index2 = job index 2 for output filename
+        Ms = host stellar mass in MSun (eMs is its uncertainty)
+        Rs = host stellar radius in RSun
+        bjd0 = initial epoch to begin simulation (e.g. the first RV observation epoch)
+        smac = planet c semi-major axis in AU
+        incs = list of known planet inclinations (2 entries if both planets are transiting) (eincs are uncertainties)
+        '''
 	self.index, self.index2, self.Nyrs, self.Nout = int(index), int(index2), int(Nyrs), int(Nout)
-	self.Ms = 0.
+	self.Rs, self.Ms = float(Rs), 0.
 	while self.Ms <= 0:
-	    self.Ms = Ms + np.random.randn() * .047
-	self.bjd0 = 2456810.2622190635  # first K2 photometry epoch
-	self.DONE = False	
+	    self.Ms = Ms + np.random.randn() * eMs
+	self.bjd0 = bjd
+        self.incs, self.eincs = np.ascontiguousarray(incs), np.ascontiguousarray(eincs)
+        assert self.incs.size == self.eincs.size
+        self.incb, self.eincb = float(self.incs[0]), float(self.eincs[0])
+        if self.incs > 0:
+            self.nplanets = 2
+            self.incc, self.eincc = float(self.incs[1]), float(self.eincs[1])
+        else:
+            self.nplanets = 1
+        self.DONE = False	
 
 	# Setup simulation
 	self.folder = folder
@@ -41,40 +59,37 @@ class K2_18integration:
 
 
     def pickleobject(self):
-	f = open('%s/pickles/K2_18simulation%.4d_%.4d'%(self.folder, self.index, self.index2), 'wb')
+	f = open('%s/pickles/Nbodysimulation%.4d_%.4d'%(self.folder, self.index, self.index2), 'wb')
 	pickle.dump(self, f)
 	f.close()
 
 
-def setupsim_corr(self, outname, N=50):
-    # Sample eccentircities logarithmically
-    eccbs = np.logspace(-3, -1, N)
-    ecccs = np.logspace(-3, -1, N)
-    #eccbs = np.linspace(1e-3, .59, N)
-    #ecccs = np.linspace(1e-3, .43, N)
-    eccs = np.array([ecccs[self.index-1], eccbs[self.index-1]])
-    eccs += np.random.randn(eccs.size) * eccs/10.
-    while np.any(eccs<0) or np.any(eccs>=1):
-	eccs = np.array([ecccs[self.index-1], eccbs[self.index-1]])
-    	eccs += np.random.randn(eccs.size) * eccs/10.
-    incs_deg = np.array([sampleK218cincdeg(0.06, eccs[0]), incb+np.random.randn()*.0084])
-    # How often to save snapshots
-    interval_yrs = self.Nyrs / self.Nout
-    return setupK2_18simv2(self.bjd0, self.Ms, eccs, incs_deg, outname, int(interval_yrs))
+#def setupsim_corr(self, outname, N=50):
+#    # Sample eccentricities logarithmically
+#    eccbs = np.logspace(-3, -1, N)
+#    ecccs = np.logspace(-3, -1, N)
+#    #eccbs = np.linspace(1e-3, .59, N)
+#    #ecccs = np.linspace(1e-3, .43, N)
+#    eccs = np.array([ecccs[self.index-1], eccbs[self.index-1]])
+#    eccs += np.random.randn(eccs.size) * eccs/10.
+#    while np.any(eccs<0) or np.any(eccs>=1):
+#	eccs = np.array([ecccs[self.index-1], eccbs[self.index-1]])
+#    	eccs += np.random.randn(eccs.size) * eccs/10.
+#    incs_deg = np.array([sampleK218cincdeg(0.06, eccs[0]), incb+np.random.randn()*.0084])
+#    # How often to save snapshots
+#    interval_yrs = self.Nyrs / self.Nout
+#    return setupK2_18simv2(self.bjd0, self.Ms, eccs, incs_deg, outname, int(interval_yrs))
 
 
 def setupsim(self, outname):
     # Sample eccentricities logarithmically
-    eccupperlim = 1.  # .1
-    #eccs = np.array([10**(np.random.uniform(-3,np.log10(eccupperlim)))])
-    #eccs = np.append(eccs, 10**(np.random.uniform(-3,np.log10(eccupperlim))))
-    #eccs = np.random.uniform(1e-3,eccupperlim,2)
+    eccupperlim = 1.
     eccs = np.random.uniform(0, eccupperlim, 2)
-    #while np.any(eccs<0) or np.any(eccs>=1):
-    #	eccs = np.array([10**(np.random.uniform(-3,-1))])
-    #	eccs = np.append(eccs, 10**(np.random.uniform(-3,-1)))
-    incbtmp = incb+np.random.randn()*.0084
-    incs_deg = np.array([sampleK218incdeg_uncorr(incbtmp), incbtmp])
+    incbtmp = self.incb + np.random.randn() * self.eincb
+    if self.nplanets == 1:
+        incs_deg = np.array([sampleincdeg_nontransiting(incbtmp, self.smac, self.Rs), incbtmp])
+    else:
+        incs_deg = np.array([self.incc + np.random.randn() * self.eincc])
     # How often to save snapshots
     interval_yrs = self.Nyrs / self.Nout
     return setupK2_18simv2(self.bjd0, self.Ms, eccs, incs_deg, outname, int(interval_yrs))
@@ -86,24 +101,24 @@ def loadpickle(fname):
     f.close()
     return self
 
-def sampleK218cincdeg(smac, eccc):
-    '''Sample the orbital inclination from its eccentrcitity (<i^2>=<e^2>/4)
-    ensuring that the planet does not transit. 
-    smac in AU.'''
-    b, ind = 0, 0
-    while abs(b) < 1:
-	incc = incb + np.rad2deg(np.sqrt(eccc**2/4.)) * np.random.choice([-1,1])
-	# Add noise to inc if cannot find solution
-	if ind > 100:
-	    incc += np.random.randn() * ind/100.
-    	b = rvs.impactparam_inc(smac/rvs.m2AU(rvs.Rsun2m(Rs)), incc)
-	ind += 1
-    return incc
 
-def sampleK218incdeg_uncorr(incbb, sig=1.5):
+#def sampleK218cincdeg(smac, eccc):
+ #   '''Sample the orbital inclination from its eccentrcitity (<i^2>=<e^2>/4)
+ #   ensuring that the planet does not transit. 
+ #   smac in AU.'''
+ #   b, ind = 0, 0
+ #   while abs(b) < 1:
+#	incc = incb + np.rad2deg(np.sqrt(eccc**2/4.)) * np.random.choice([-1,1])
+#	# Add noise to inc if cannot find solution
+#	if ind > 100:
+#	    incc += np.random.randn() * ind/100.
+ #   	b = rvs.impactparam_inc(smac/rvs.m2AU(rvs.Rsun2m(Rs)), incc)
+#	ind += 1
+ #   return incc
+
+ 
+def sampleincdeg_nontransiting(incbb, smac, Rs, sig=1.5):
     '''Sample incc from a Gaussian but reject inclinations that result in a transit.'''
-    #sig = 2.2 * 3  # 3sigma on mode of mutual inclination distribution from Fabrycky+2014
-    smac = .06
     incc = incbb + np.random.randn()*sig
     b = rvs.impactparam_inc(smac/rvs.m2AU(rvs.Rsun2m(Rs)), incc)
     while abs(b) < 1:
@@ -118,9 +133,11 @@ def RHill_from_sim(sim):
     star, p1, p2 = ps['star'], ps[1], ps[2]
     return ((p1.m+p2.m)/(3.*star.m))**(1./3) * (p1.a+p2.a)/2.   # units of a (e.g. AU)
 
+
 def get_Rhill_init(mps, Ms, smas):
     '''mps in Msun, Ms in Msun, smas in AU.'''
     return (mps.sum()/(3.*Ms))**(1./3) * smas.sum()/2.
+
 
 def get_initial_parameters(sim):
     '''Return the initial planetary parameters.'''
@@ -154,4 +171,4 @@ if __name__ == '__main__':
     index = int(sys.argv[1])
     for i in range(1,Nsim_per_ecc+1):
 	if do_i_run_this_simulation('%s/SimArchive/archived%.4d_%.4d'%(folder, index, i)):
-    	    self = K2_18integration(folder, index, i, Nyrs=Nyrs, Nout=Nout)
+    	    self = system_integration(folder, index, i, Ms, eMs, Rs, bjd0, smac, incs, eincs, Nyrs=Nyrs, Nout=Nout)
