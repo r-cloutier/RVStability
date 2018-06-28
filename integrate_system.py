@@ -45,6 +45,14 @@ class system_integration:
 
 	# Setup simulation
 	self.folder = folder
+	try:
+	    os.mkdir(self.folder)
+	except OSError:
+	    pass
+	try:
+	    os.mkdir('%s/SimArchive'%self.folder)
+	except OSError:
+	    pass
         self.outname = '%s/SimArchive/archived%.4d_%.4d'%(self.folder,
                                                           self.index,
                                                           self.index2)
@@ -65,6 +73,10 @@ class system_integration:
 
 
     def pickleobject(self):
+	try:
+	    os.mkdir('%s/pickles'%self.folder)
+	except OSError:
+	    pass
 	f = open('%s/pickles/Nbodysimulation%.4d_%.4d'%(self.folder, self.index, self.index2), 'wb')
 	pickle.dump(self, f)
 	f.close()
