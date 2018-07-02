@@ -1,9 +1,10 @@
 '''
-Functions to simulate the RVs of a planetary system.
+Functivns to simulate the RVs of a planetary system.
 '''
-from imports import *
+import numpy as np
+import rvs
 import rebound
-import rvmodel
+from PyAstronomy.pyasl import foldAt
 
 def years2days(t):
     return t*365.25
@@ -29,7 +30,7 @@ def initialize_system_parameters():
     return Pdict, T0dict, Kdict, hdict, kdict
 
 
-def setup_sim(Ms, planettheta, bjd0):
+def setup_sim(Ms, planettheta, bjd0, randomOmega=True, eccupperlim=0):
     '''
     Setup a simulation with a central star and planets.
 
@@ -48,6 +49,12 @@ def setup_sim(Ms, planettheta, bjd0):
 	6) orbital inclination in degrees.
     `bjd0` : scalar
 	Reference epoch to begin the simulation at.
+    `randomOmega` : bool
+	If True, randomly sample the value of each planet's longitude of 
+	the ascending node from U(0,2pi).
+    `eccupperlim` : float
+	The upper limit of eccentricities to sample from. If `eccupperlim` 
+	is 0, then don't resample the eccentricities.
 
     Returns
     -------
@@ -79,19 +86,22 @@ def setup_sim(Ms, planettheta, bjd0):
     for p in Ps.keys():
 	eccs[p], omegas[p] = eccstmp[ind], omegastmp[ind]
 	ind += 1
-    #sim.dt = days2years(np.min(Ps.values())) * 1e-1
 
     # Add star
     sim.add(m=Ms, hash='star')
 
     # Add planets
     for p in Ps.keys():
-	mp = rvs.kg2Msun(rvs.Mearth2kg(rvs.RV_mp(Ps[p], Ms, Ks[p], ecc=eccs[p])))
+	mp = rvs.kg2Msun(rvs.Mearth2kg(rvs.RV_Mp(Ps[p], Ms, Ks[p], ecc=eccs[p])))
         Pp = Ps[p]
-        ap = rvs.semimajoraxis(Pp, Ms, 0)
+        ap = rvs.m2AU(rvs.semimajoraxis(Pp, Ms, 0))
         thetap = 2*np.pi * foldAt(bjd0, Pp, T0s[p])
         eccp, omegap, incp = eccs[p], omegas[p], np.deg2rad(incs[p])
-        sim.add(m=mp, a=ap, inc=incp, e=eccp, omega=omegap, theta=thetap, hash=p)
+	if eccupperlim != 0:
+	    eccp   = np.random.uniform(0,eccupperlim)
+	    omegap = np.random.uniform(0,2*np.pi)
+	Omegap = np.random.uniform(0,2*np.pi) if randomOmega else 0.
+        sim.add(m=mp, a=ap, inc=incp, e=eccp, omega=omegap, Omega=Omegap, theta=thetap, hash=p)
 
     sim.move_to_com()
 
@@ -143,43 +153,26 @@ def integrate_sim(bjd, sim):
     # Save output
     nparticles = len(sim.particles.keys())
     RVs = np.zeros(times.size)
+    stable = True
     smas, eccs, incs = np.zeros((times.size, nparticles-1)), \
                        np.zeros((times.size, nparticles-1)), \
                        np.zeros((times.size, nparticles-1))
-    for i in range(times.size):
-        sim.integrate(times[i])
-        RVs[i] = -sim.particles['star'].vx
-        for j in range(nparticles-1):
-            smas[i,j] = sim.particles[j+1].a  # AU
-            eccs[i,j] = sim.particles[j+1].e
-	    incs[i,j] = np.rad2deg(sim.particles[j+1].inc)
-    
+    dist = np.zeros(times.size)
+    ps = sim.particles
+    try:
+    	for i in range(times.size):
+            sim.integrate(times[i])
+	    dp = ps[1]-ps[2]
+	    dist[i] = np.sqrt(dp.x**2 + dp.y**2 + dp.z**2)
+            RVs[i] = -sim.particles['star'].vx
+            for j in range(nparticles-1):
+            	smas[i,j] = sim.particles[j+1].a  # AU
+            	eccs[i,j] = sim.particles[j+1].e
+	    	incs[i,j] = np.rad2deg(sim.particles[j+1].inc)
+    except rebound.Encounter as error:
+	stable = False   
+ 
     # Convert units (AU/yr -> m/s)
     RVs = rvs.AU2m(RVs) / (365.25*24*60*60)
     
-    return bjd, RVs, smas, eccs, incs
-
-
-def get_keplerians(planettheta, Ms, bjd):
-    '''Add keplerians together to compare to dynamical integration.'''
-    Ps, T0s, mps, incs, eccs = planettheta
-    RVs = np.zeros(bjd.size)
-    for p in Ps.keys():
-        K = rvs.RV_K(Ps[p], Ms, mps[p], ecc=eccs[p], inc=incs[p])
-        h, k = np.sqrt(eccs[p]), 0.
-        RVs += rvmodel.get_rv2((Ps[p], T0s[p], K, h, k), bjd)
-    return bjd, RVs
-
-
-# trappist-1 test
-if __name__ == '__main__':
-    Ps, T0s, mps, incs, eccs = initialize_system_parameters()
-    Ps = {'b':1.51087, 'c':2.42183}
-    T0s = {'b':2457322.51736, 'c':2457282.80728}
-    mps['b'], mps['c'] = .85, 1.38
-    incs['b'], incs['c'] = 89.65, 89.67
-    planettheta = (Ps, T0s, mps, incs, eccs)
-    Ms = .0802
-    sim = setup_sim(Ms, planettheta)
-    bjd1, rv1, a1, e1 = integrate_sim(sim, 1./12)
-    bjd2, rv2 = get_keplerians(planettheta, Ms, bjd1)
+    return bjd, RVs, smas, eccs, incs, dist, stable
