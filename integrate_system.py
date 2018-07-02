@@ -1,7 +1,5 @@
 from DynamicalSim import *
-import numpy as np
-import pylab as plt
-import rvs, sys, glob, os
+from imports import *
 from setup_sim import setup_simv2
 import cPickle as pickle
 
@@ -30,7 +28,7 @@ class system_integration:
 	self.Rs, self.Ms = float(Rs), 0.
 	while self.Ms <= 0:
 	    self.Ms = Ms + np.random.randn() * eMs
-	self.bjd0 = bjd
+	self.bjd0 = bjd0
         self.incs, self.eincs = np.ascontiguousarray(incs), \
                                 np.ascontiguousarray(eincs)
         assert self.incs.size == self.eincs.size
@@ -96,12 +94,13 @@ def setupsim(self, outname):
     eccs = np.random.uniform(0, eccupperlim, 2)
     incbtmp = self.incb + np.random.randn() * self.eincb
     if self.nplanets == 1:
-        incs_deg = np.array([sampleincdeg_nontransiting(incbtmp, self.smac,
-                                                        self.Rs), incbtmp])
+        incs_deg = np.array([incbtmp, sampleincdeg_nontransiting(incbtmp, self.smac,
+                                                                 self.Rs)])
     else:
-        incs_deg = np.array([self.incc + np.random.randn() * self.eincc])
+        incs_deg = np.array([incbtmp, self.incc + np.random.randn() * self.eincc])
     # How often to save snapshots
     interval_yrs = self.Nyrs / self.Nout
+    print self.Ps.size, incs_deg.size
     return setup_simv2(self.bjd0, self.Ms, self.Ps, self.ePs, self.T0s,
                        self.eT0s, self.mps, self.emps, eccs, incs_deg,
                        outname, int(interval_yrs))
@@ -166,11 +165,14 @@ if __name__ == '__main__':
     # Neccentricities == 10 in log space
     # so index in [1,1e2] with 10 simulations per ecc value
     Nyrs, Nsim_per_ecc, Nout = 1e6, 1, 1e3 # 50
+    ## lhs1140 ##
     Ms, eMs, Rs, bjd0 = .146, .019, .186, 7349.636991
-    Ps, ePs, T0s, eT0s, mps, emps = [24.7371,3.778], [3e-4,1e-3], \
-				    [6915.698357956122,8226.340318094952], [5e-3,7e-3], \
-				    [6.1,1.4], [.8,.32]
-    folder = 'pickles_uncorr_ALLecc_lin'
+    Ps, ePs, T0s, eT0s, mps, emps = [3.778,24.7371], [1e-3,3e-4], \
+				    [8226.340318094952,6915.698357956122], [7e-3,7e-3], \
+				    [1.4,6.1], [.32,.8]
+    incs, eincs = [89.91,89.91], [.03,.07]
+    #############
+    folder = 'pickles_lhs1140'
     index = int(sys.argv[1])
     for i in range(1,Nsim_per_ecc+1):
 	if do_i_run_this_simulation('%s/SimArchive/archived%.4d_%.4d'%(folder,

@@ -1,6 +1,5 @@
 import rebound
-import numpy as np
-import rvs
+from imports import *
 from PyAstronomy.pyasl import foldAt
 
 
@@ -14,7 +13,7 @@ def setup_simv2(bjd0, Ms, Ps, ePs, T0s, eT0s, mps, emps, eccs, incs_deg,
     sim = rebound.Simulation()
     sim.integrator = "whfast"
     sim.units = ('AU','Msun','yr')
-    sim.initSimulationArchive("%s.bin"%outname, interval=interval_yrs)
+    sim.automateSimulationArchive('%s.bin'%outname, interval=interval_yrs, deletefile=True)
 
     # Get keplerian parameters
     Psin, ePs = np.ascontiguousarray(Ps) + 0, np.ascontiguousarray(ePs)
@@ -23,13 +22,13 @@ def setup_simv2(bjd0, Ms, Ps, ePs, T0s, eT0s, mps, emps, eccs, incs_deg,
     while np.any(Ps<=0):
     	Ps = Psin
 	if random:
-	    Ps += np.array([np.random.randn()*ePs[0], np.random.randn()ePs[1]])
+	    Ps += np.array([np.random.randn()*ePs[0], np.random.randn()*ePs[1]])
     if random:
 	T0s += 2450000 + np.array([np.random.randn()*eT0s[0],
                                    np.random.randn()*eT0s[1]])
     if random:
     	mps += np.array([np.random.randn()*emps[0], np.random.randn()*emps[1]])
-    smas = rvs.m2AU(rvs.semimajoraxis(Ps, Ms, mps))
+    smas =rvs.semimajoraxis(Ps, Ms, mps)
     mps = rvs.kg2Msun(rvs.Mearth2kg(mps))
     nplanets = Ps.size
     omegas = np.random.uniform(-np.pi, np.pi, nplanets)
