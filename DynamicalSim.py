@@ -1,8 +1,7 @@
 '''
 Functivns to simulate the RVs of a planetary system.
 '''
-import numpy as np
-import rvs
+from imports import *
 import rebound
 from PyAstronomy.pyasl import foldAt
 
