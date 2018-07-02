@@ -8,8 +8,8 @@ import cPickle as pickle
 
 class system_integration:
 
-    def __init__(self, folder, index, index2, Ms, eMs, Rs, bjd0, smac,
-                 incs, eincs, Nyrs=1e6, Nout=500):
+    def __init__(self, folder, index, index2, Ms, eMs, Rs, bjd0,
+                 Ps, ePs, T0s, eT0s, mps, emps, incs, eincs, Nyrs=1e6, Nout=500):
         '''
         folder = top level directory name to save simulation results
         index = job index 1 over eccentricity values
@@ -18,7 +18,9 @@ class system_integration:
         Rs = host stellar radius in RSun
         bjd0 = initial epoch to begin simulation (e.g. the first RV observation
         epoch)
-        smac = planet c semi-major axis in AU
+	Ps = list of known planet periods in days
+	T0s = list of times of mid-transit in the same units as bjd0
+	mps = list of planet masses in Mearth
         incs = list of known planet inclinations (2 entries if both planets 
         are transiting) (eincs are uncertainties)
         '''
@@ -41,7 +43,13 @@ class system_integration:
         else:
             warning = 'Can only treat systems with 1 or 2 transiting planets.'
             raise ValueError(warning)
-        self.DONE = False
+	self.Ps, self.ePs = np.ascontiguousarray(Ps), np.ascontiguousarray(ePs)
+        self.T0s, self.eT0s = np.ascontiguousarray(T0s), np.ascontiguousarray(eT0s)
+        self.mps, self.emps = np.ascontiguousarray(mps), np.ascontiguousarray(emps)
+        assert self.Ps.size == self.nplanets
+        assert self.T0s.size == self.nplanets
+        assert self.mps.size == self.nplanets
+    	self.DONE = False
 
 	# Setup simulation
 	self.folder = folder
@@ -157,12 +165,18 @@ def do_i_run_this_simulation(fname):
 if __name__ == '__main__':
     # Neccentricities == 10 in log space
     # so index in [1,1e2] with 10 simulations per ecc value
-    Nyrs, Nsim_per_ecc, Nout = 1e6, 50, 1e3
+    Nyrs, Nsim_per_ecc, Nout = 1e6, 1, 1e3 # 50
+    Ms, eMs, Rs, bjd0 = .146, .019, .186, 7349.636991
+    Ps, ePs, T0s, eT0s, mps, emps = [24.7371,3.778], [3e-4,1e-3], \
+				    [6915.698357956122,8226.340318094952], [5e-3,7e-3], \
+				    [6.1,1.4], [.8,.32]
     folder = 'pickles_uncorr_ALLecc_lin'
     index = int(sys.argv[1])
     for i in range(1,Nsim_per_ecc+1):
 	if do_i_run_this_simulation('%s/SimArchive/archived%.4d_%.4d'%(folder,
                                                                        index,
                                                                        i)):
-    	    self = system_integration(folder, index, i, Ms, eMs, Rs, bjd0, smac,
+    	    self = system_integration(folder, index, i, Ms, eMs, Rs, bjd0,
+				      Ps, ePs, T0s, eT0s, mps, emps,
                                       incs, eincs, Nyrs=Nyrs, Nout=Nout)
+
