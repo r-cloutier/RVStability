@@ -15,7 +15,7 @@ class integrate_results:
 
     def get_pickles(self):
 	'''Get all the pickles in folder.'''
-	self.picklestmp = np.array(glob.glob('%s/pickles/K*'%self.folder))
+	self.picklestmp = np.array(glob.glob('%s/pickles/N*'%self.folder))
 	self.npicklestmp = self.picklestmp.size
 
 
