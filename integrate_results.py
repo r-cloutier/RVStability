@@ -2,6 +2,7 @@ from integrate_system import *
 from scipy.ndimage import gaussian_filter
 import matplotlib.gridspec as gridspec
 from matplotlib.colors import rgb2hex
+from Hillstability_eccentricityspace import *
 from uncertainties import unumpy
 
 class integrate_results:
@@ -108,8 +109,8 @@ def plot_one_stability_histograms(folder, stable, arr, bins=10, xlog=False, ylog
     plt.close('all')
 
 
-def plot_ecc_stability(folder, stable, eccs, sig=2, bins=21, 
-		       pltt=True, label=False):
+def plot_ecc_stability(folder, stable, eccs, m1, m2, M, a1, a2,
+		       sig=2, bins=21, pltt=True, label=False):
 
     eccarr = np.linspace(0,1,bins)
     Decc = np.diff(eccarr)[0] / 2.
@@ -149,8 +150,9 @@ def plot_ecc_stability(folder, stable, eccs, sig=2, bins=21,
     ax1.set_ylim((0,1))
 
     # Get analytical predicion
-    ecs, ebs = np.loadtxt('pickles_uncorr_ALLecc_lin/Hillstable_forbubbles.dat').T
-    ax1.plot(ecs, ebs, 'k--', lw=3)
+    #ecc1, ecc2 = np.loadtxt('pickles_uncorr_ALLecc_lin/Hillstable_forbubbles.dat').T
+    ecc1, ecc2 = compute_pcrit_curve(m1, m2, M, a1, a2)
+    ax1.plot(ecc1, ecc2, 'k--', lw=3)
 
     # Plot MAP ecc from Model 1
     eccval = [.139, .135]

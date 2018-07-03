@@ -4,7 +4,7 @@ from PyAstronomy.pyasl import foldAt
 
 
 def setup_simv2(bjd0, Ms, Ps, ePs, T0s, eT0s, mps, emps, eccs, incs_deg,
-                outname, interval_yrs, random=True, DeltaOmegamax=180):
+                outname, interval_yrs, NRhill_to_stop=1, random=True, DeltaOmegamax=180):
     '''Create a simulation of a 2-planet system with custom input for the 
     planetary parameters in the form of 1d arrays.
     example T0s = np.array([7264.49, 7264.39142])
@@ -46,6 +46,6 @@ def setup_simv2(bjd0, Ms, Ps, ePs, T0s, eT0s, mps, emps, eccs, incs_deg,
     sim.move_to_com()
 
     RHill = (mps.sum()/(3.*Ms))**(1./3) * smas.mean()
-    sim.exit_min_distance = float(RHill)
+    sim.exit_min_distance = float(RHill) * NRhill_to_stop
 
     return sim
